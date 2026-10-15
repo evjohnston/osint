@@ -1,0 +1,11 @@
+# Investigation output — contains data about real people; never commit
+reports/
+
+# Secrets and local environment
+.env
+.venv/
+
+# Python / OS cruft
+__pycache__/
+*.pyc
+.DS_Store

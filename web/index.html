@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>osintkit</title>
+<style>
+:root {
+  --bg: #f6f6f3; --card: #ffffff; --ink: #1c1c1f; --muted: #75757d; --line: #e3e3de; --soft: #f0f0ec;
+  --accent: #2a5bd7; --accent-ink: #ffffff; --ok: #1e9b57; --err: #d24848; --skip: #c3950a;
+  --radius: 12px; --mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #121214; --card: #1b1b1e; --ink: #ececef; --muted: #8d8d96; --line: #2c2c31; --soft: #232327;
+          --accent: #6f9bff; --accent-ink: #0d1530; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; }
+a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+button { font: inherit; }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding: 28px 16px 80px; display: grid; grid-template-columns: 1fr 240px; gap: 24px; }
+@media (max-width: 860px) { .wrap { grid-template-columns: 1fr; } aside { order: 2; } }
+
+header { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 12px; }
+header h1 { margin: 0; font-size: 22px; letter-spacing: -0.02em; }
+header h1 span { color: var(--accent); }
+header p { margin: 0; color: var(--muted); font-size: 14px; }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+.stack > * + * { margin-top: 16px; }
+
+/* search */
+form.search { display: flex; gap: 8px; flex-wrap: wrap; }
+.field { flex: 1 1 320px; position: relative; }
+.field input { width: 100%; height: 46px; padding: 0 92px 0 14px; border-radius: 10px; border: 1px solid var(--line);
+               background: var(--soft); color: var(--ink); font-size: 16px; outline: none; }
+.field input:focus { border-color: var(--accent); background: var(--card); }
+.field .chip { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); }
+select, .btn { height: 46px; border-radius: 10px; border: 1px solid var(--line); background: var(--soft); color: var(--ink); padding: 0 12px; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; padding: 0 22px; cursor: pointer; }
+.btn.primary:disabled { opacity: .55; cursor: progress; }
+.btn.ghost { height: 34px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; }
+.opts { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; margin-top: 12px; font-size: 14px; color: var(--muted); }
+.opts label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.examples button { border: 0; background: none; color: var(--accent); cursor: pointer; padding: 0 4px; font-size: 14px; }
+.chip { display: inline-block; font-size: 12px; padding: 2px 9px; border-radius: 99px; background: var(--soft); color: var(--muted); border: 1px solid var(--line); white-space: nowrap; }
+.chip.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 35%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
+/* results */
+.toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.toolbar .title { font-size: 20px; font-weight: 650; word-break: break-all; margin-right: auto; }
+.section h2 { margin: 0; font-size: 16px; display: flex; align-items: center; gap: 10px; }
+.section h2 .count { margin-left: auto; font-size: 13px; font-weight: 400; color: var(--muted); }
+.bar { height: 3px; background: var(--soft); border-radius: 3px; margin: 12px 0 4px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .25s; }
+.bar.done i { background: var(--ok); }
+
+.summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 14px; }
+.stat { background: var(--soft); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.stat .k { font-size: 12px; color: var(--muted); text-transform: capitalize; }
+.stat .v { margin-top: 2px; word-break: break-word; }
+.stat.wide { grid-column: 1 / -1; }
+
+.hits { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-top: 14px; }
+.hit { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.hit a { font-weight: 600; }
+.hit .d { font-size: 12.5px; color: var(--muted); margin-top: 4px; word-break: break-word; }
+.empty { color: var(--muted); font-size: 14px; margin-top: 12px; }
+
+.sources { margin-top: 16px; border-top: 1px solid var(--line); }
+.src { border-bottom: 1px solid var(--line); }
+.src > button { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 2px; cursor: pointer; font-size: 14px; }
+.src > button:focus-visible { outline: 2px solid var(--accent); border-radius: 6px; }
+.src .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.src .meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.section.collapsed .sources { display: none; }
+.src .body { display: none; padding: 0 2px 14px 20px; font-size: 13.5px; overflow-x: auto; }
+.src.open .body { display: block; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); flex: none; }
+.dot.ok { background: var(--ok); } .dot.error { background: var(--err); } .dot.skipped { background: var(--skip); } .dot.none { background: var(--muted); }
+.dot.pending { background: none; border: 2px solid var(--line); border-top-color: var(--accent); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .dot.pending { animation: none; border-color: var(--accent); } }
+
+table.kv { border-collapse: collapse; width: 100%; }
+table.kv th { text-align: left; vertical-align: top; color: var(--muted); font-weight: 500; padding: 3px 14px 3px 0; white-space: nowrap; width: 1%; }
+table.kv td { padding: 3px 0; word-break: break-word; }
+ul.list { margin: 0; padding-left: 18px; }
+.muted { color: var(--muted); }
+.pill { padding: 0 8px; border-radius: 99px; font-size: 12px; }
+.pill.yes { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+.pill.no { background: var(--soft); color: var(--muted); }
+code, .mono { font-family: var(--mono); font-size: 12.5px; }
+
+.leads h4 { margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+.leadchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.lead { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; padding: 4px 10px; border-radius: 99px;
+        border: 1px solid var(--line); background: var(--soft); color: var(--ink); max-width: 100%; }
+.lead span.v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lead .n { font-size: 11px; color: var(--muted); }
+.lead.strong { border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+button.lead { cursor: pointer; } button.lead:hover { border-color: var(--accent); color: var(--accent); }
+.links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.links a { font-size: 13.5px; padding: 5px 11px; border-radius: 99px; border: 1px solid var(--line); background: var(--soft); color: var(--ink); }
+.links a:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+
+aside h3 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+aside ul { list-style: none; margin: 0; padding: 0; }
+aside li button { all: unset; box-sizing: border-box; cursor: pointer; display: block; width: 100%; padding: 8px 10px; border-radius: 8px; }
+aside li button:hover, aside li button:focus-visible { background: var(--soft); }
+aside .t { display: block; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+aside .s { display: block; font-size: 12px; color: var(--muted); }
+.notice { font-size: 12.5px; color: var(--muted); margin-top: 18px; }
+.error-box { color: var(--err); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>osint<span>kit</span></h1>
+    <p>Look up a username, email, domain, IP or phone number across public sources.</p>
+  </header>
+
+  <main class="stack">
+    <div class="card">
+      <form class="search" id="form" autocomplete="off">
+        <div class="field">
+          <input id="target" name="target" placeholder="torvalds · someone@example.com · example.com · 8.8.8.8" aria-label="Target" autofocus>
+          <span class="chip" id="detected" hidden></span>
+        </div>
+        <select id="type" aria-label="Target type">
+          <option value="">Auto-detect</option>
+          <option value="username">Username</option>
+          <option value="email">Email</option>
+          <option value="domain">Domain</option>
+          <option value="ip">IP address</option>
+          <option value="url">URL</option>
+          <option value="phone">Phone</option>
+        </select>
+        <button class="btn primary" id="go" type="submit">Investigate</button>
+      </form>
+      <div class="opts">
+        <label><input type="checkbox" id="pivot"> Follow leads <span class="muted">(email → domain + username, domain → IP)</span></label>
+        <label title="Adds ~670 WhatsMyName sites to username scans. Takes 30–60 seconds."><input type="checkbox" id="deep" checked> Deep username scan <span class="muted">(700 sites)</span></label>
+        <span class="examples">Try:
+          <button type="button" data-ex="torvalds">torvalds</button>
+          <button type="button" data-ex="github.com">github.com</button>
+          <button type="button" data-ex="1.1.1.1">1.1.1.1</button>
+        </span>
+      </div>
+    </div>
+
+    <div id="results" class="stack"></div>
+  </main>
+
+  <aside>
+    <h3>Recent reports</h3>
+    <ul id="history"><li class="muted" style="font-size:14px">None yet</li></ul>
+    <p class="notice">Only investigate targets you're authorized to look into. Results come from public data and can be wrong or out of date.</p>
+  </aside>
+</div>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const isUrl = v => typeof v === "string" && /^https?:\/\/\S+$/i.test(v);
+const link = (url, text) => `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(text ?? url)}</a>`;
+const label = k => esc(String(k).replace(/_/g, " "));
+const TYPE_NAMES = { username: "Username", email: "Email", domain: "Domain", ip: "IP address", url: "URL", phone: "Phone" };
+
+// Mirrors osintkit/detect.py, for the live hint only; the server decides for real.
+function detect(t) {
+  t = t.trim();
+  if (!t) return null;
+  if (/^https?:\/\//i.test(t)) return "url";
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(t) || (t.includes(":") && /^[0-9a-f:.]+$/i.test(t))) return "ip";
+  if (/^[A-Za-z0-9._%+'-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(t)) return "email";
+  if (/^\+?[\d\s().-]{7,20}$/.test(t) && (t.match(/\d/g) || []).length >= 7) return "phone";
+  if (/^(?=.{1,253}$)(?!-)([A-Za-z0-9-]{1,63}(?<!-)\.)+[A-Za-z]{2,63}$/.test(t)) return "domain";
+  return "username";
+}
+
+// Generic renderer for arbitrary source data. Everything is escaped.
+function render(v, depth = 0) {
+  if (v === null || v === undefined || v === "") return '<span class="muted">—</span>';
+  if (v === true) return '<span class="pill yes">yes</span>';
+  if (v === false) return '<span class="pill no">no</span>';
+  if (isUrl(v)) return link(v);
+  if (Array.isArray(v)) {
+    if (!v.length) return '<span class="muted">—</span>';
+    if (v.every(x => typeof x !== "object" || x === null) && v.length > 3 && !v.some(isUrl) && depth > 0 && v.join(", ").length < 300)
+      return esc(v.join(", "));
+    const shown = v.slice(0, 200);
+    return `<ul class="list">${shown.map(x => `<li>${render(x, depth + 1)}</li>`).join("")}</ul>` +
+      (v.length > shown.length ? `<span class="muted">… ${v.length - shown.length} more</span>` : "");
+  }
+  if (typeof v === "object") {
+    const rows = Object.entries(v);
+    if (!rows.length) return '<span class="muted">—</span>';
+    return `<table class="kv">${rows.map(([k, x]) => `<tr><th>${label(k)}</th><td>${render(x, depth + 1)}</td></tr>`).join("")}</table>`;
+  }
+  return `<span>${esc(v)}</span>`;
+}
+
+// Epoch timestamps (s or ms) in date-ish fields → readable dates.
+function fmtDetail(k, v) {
+  if (typeof v === "number" && /creat|join|online|regist|date|time/i.test(k) && v > 1e9) {
+    const d = new Date(v > 1e12 ? v : v * 1000);
+    if (!isNaN(d)) return d.toISOString().slice(0, 10);
+  }
+  if (Array.isArray(v)) return esc(v.slice(0, 6).join(", "));
+  if (v && typeof v === "object") return esc(JSON.stringify(v).slice(0, 120));
+  if (typeof v === "string" && /^\d{4}-\d\d-\d\dT/.test(v)) return esc(v.slice(0, 10));
+  return esc(String(v).slice(0, 140));
+}
+
+function inline(v) {
+  if (Array.isArray(v)) return v.length ? v.map(x => isUrl(x) ? link(x) : esc(x)).join(", ") : '<span class="muted">—</span>';
+  return render(v);
+}
+
+// ---------- results UI ----------
+let current = null;  // EventSource
+
+function resetResults(target, kind) {
+  $("#results").innerHTML = `
+    <div class="card">
+      <div class="toolbar">
+        <span class="title">${esc(target)}</span>
+        <span class="chip on">${esc(TYPE_NAMES[kind] || kind)}</span>
+        <span class="chip" id="status">Running…</span>
+        <span id="actions"></span>
+      </div>
+    </div>`;
+}
+
+function sectionEl(title) {
+  const id = "s-" + btoa(unescape(encodeURIComponent(title))).replace(/[^A-Za-z0-9]/g, "");
+  let el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement("div");
+    el.className = "card section";
+    el.id = id;
+    el.innerHTML = `<h2>${esc(title)}<span class="count"></span></h2><div class="bar"><i></i></div>
+                    <div class="sum"></div><div class="sources"></div>`;
+    $("#results").appendChild(el);
+    el._n = { total: 0, done: 0 };
+  }
+  return el;
+}
+
+function sourceRow(sec, name) {
+  const key = "r-" + btoa(unescape(encodeURIComponent(name))).replace(/[^A-Za-z0-9]/g, "");
+  let row = sec.querySelector(`[data-k="${key}"]`);
+  if (!row) {
+    row = document.createElement("div");
+    row.className = "src";
+    row.dataset.k = key;
+    row.innerHTML = `<button type="button" aria-expanded="false"><span class="dot pending"></span><span class="name">${esc(name)}</span><span class="meta">waiting</span></button><div class="body"></div>`;
+    row.firstChild.addEventListener("click", () => {
+      row.classList.toggle("open");
+      row.firstChild.setAttribute("aria-expanded", row.classList.contains("open"));
+    });
+    sec.querySelector(".sources").appendChild(row);
+  }
+  return row;
+}
+
+function updateSource(title, name, res) {
+  const sec = sectionEl(title);
+  const row = sourceRow(sec, name);
+  if (!res) { sec._n.total++; return progress(sec); }
+  if (!row._done) { row._done = true; sec._n.done++; }
+  const isUser = title.startsWith("Username");
+  $(".dot", row).className = "dot " + (isUser && res.status === "ok" ? (res.data.found ? "ok" : res.data.found === false ? "none" : "skipped") : res.status === "empty" ? "none" : res.status);
+  let meta = res.status === "skipped" ? "skipped" : res.status === "error" ? "error" : `${res.ms} ms`;
+  if (isUser && res.status === "ok") meta = res.data.found ? "found" : res.data.found === false ? "not found" : "inconclusive";
+  $(".meta", row).textContent = meta;
+  $(".body", row).innerHTML = res.status === "ok" ? render(res.data) : `<span class="${res.status === "error" ? "error-box" : "muted"}">${esc(res.error || "No results")}</span>`;
+  progress(sec);
+}
+
+function progress(sec) {
+  const { total, done } = sec._n;
+  $(".count", sec).textContent = `${done}/${total} sources`;
+  $(".bar i", sec).style.width = total ? `${(100 * done / total).toFixed(0)}%` : "0";
+}
+
+function renderSection(title, section) {
+  const sec = sectionEl(title);
+  $(".bar", sec).classList.add("done");
+  $(".bar i", sec).style.width = "100%";
+  const s = section.summary || {};
+  let html = "";
+  if (title.startsWith("Username")) {
+    const hits = Object.entries(section.sources).filter(([, r]) => r.status === "ok" && r.data.found);
+    html = hits.length ? `<div class="hits">${hits.map(([name, r]) => {
+      const d = Object.entries(r.data.details || {}).filter(([, v]) => v !== null && v !== "" && !(Array.isArray(v) && !v.length));
+      return `<div class="hit">${link(r.data.url, name)}${d.length ? `<div class="d">${d.slice(0, 5).map(([k, v]) => `${label(k)}: ${fmtDetail(k, v)}`).join("<br>")}</div>` : ""}</div>`;
+    }).join("")}</div>` : `<p class="empty">No accounts found on the ${s.checked} sites checked.</p>`;
+    if (s.inconclusive?.length) html += `<p class="empty">Inconclusive (blocked or rate-limited): ${esc(s.inconclusive.join(", "))}</p>`;
+    html += `<button type="button" class="btn ghost toggle-src" style="margin-top:14px">Show all ${Object.keys(section.sources).length} sources</button>`;
+    sec.classList.add("collapsed");
+  } else {
+    html = `<div class="summary">${Object.entries(s).map(([k, v]) => {
+      if (k === "subdomains") {
+        return v.length ? `<div class="stat wide"><div class="k">subdomains</div><div class="v"><details><summary>Show all ${v.length}</summary><div class="mono" style="margin-top:6px;columns:2 220px">${v.map(esc).join("<br>")}</div></details></div></div>` : "";
+      }
+      const wide = Array.isArray(v) && v.join(", ").length > 60;
+      return `<div class="stat${wide ? " wide" : ""}"><div class="k">${label(k)}</div><div class="v">${inline(v)}</div></div>`;
+    }).join("")}</div>`;
+  }
+  $(".sum", sec).innerHTML = html;
+  $(".toggle-src", sec)?.addEventListener("click", e => {
+    const c = sec.classList.toggle("collapsed");
+    e.target.textContent = c ? `Show all ${Object.keys(section.sources).length} sources` : "Hide sources";
+  });
+  // make sure every source row shows its final state (needed when loading from history)
+  sec._n.total = Math.max(sec._n.total, Object.keys(section.sources).length);
+  for (const [name, res] of Object.entries(section.sources)) {
+    if (!sourceRow(sec, name)._done) updateSource(title, name, res);
+  }
+  progress(sec);
+}
+
+const LEAD_LABELS = { emails: "Emails", usernames: "Usernames", names: "Names", locations: "Locations", profiles: "Linked profiles" };
+
+function renderLeads(leads) {
+  const kinds = Object.keys(LEAD_LABELS).filter(k => leads?.[k]?.length);
+  if (!kinds.length) return;
+  const el = document.createElement("div");
+  el.className = "card leads";
+  const chip = (kind, it) => {
+    const n = it.sources.length, title = esc("Reported by: " + it.sources.join(", "));
+    const inner = `<span class="v">${esc(it.value)}</span>${n > 1 ? `<span class="n">×${n}</span>` : ""}`;
+    const cls = `lead${n > 1 ? " strong" : ""}`;
+    if (kind === "emails" || kind === "usernames")
+      return `<button type="button" class="${cls}" title="${title} — click to investigate" data-run="${esc(it.value)}" data-kind="${kind === "emails" ? "email" : "username"}">${inner} →</button>`;
+    if (kind === "profiles" && isUrl(it.value))
+      return `<a class="${cls}" title="${title}" href="${esc(it.value)}" target="_blank" rel="noopener noreferrer">${inner}</a>`;
+    if (kind === "names")
+      return `<a class="${cls}" title="${title} — search the web" href="https://www.google.com/search?q=${encodeURIComponent('"' + it.value + '"')}" target="_blank" rel="noopener noreferrer">${inner}</a>`;
+    return `<span class="${cls}" title="${title}">${inner}</span>`;
+  };
+  el.innerHTML = `<h2 style="margin:0;font-size:16px">Leads</h2>
+    <p class="muted" style="margin:4px 0 0;font-size:13.5px">Identifiers pulled from every source. ×N means N sources agree. Click an email or username to investigate it.</p>
+    ${kinds.map(k => `<h4>${LEAD_LABELS[k]} (${leads[k].length})</h4><div class="leadchips">${leads[k].slice(0, 60).map(it => chip(k, it)).join("")}</div>`).join("")}`;
+  el.querySelectorAll("[data-run]").forEach(b => b.addEventListener("click", () => {
+    $("#target").value = b.dataset.run; $("#type").value = b.dataset.kind;
+    $("#target").dispatchEvent(new Event("input"));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    run(b.dataset.run, b.dataset.kind, $("#pivot").checked, $("#deep").checked);
+  }));
+  $("#results").children[0].after(el);
+}
+
+function renderLinks(links) {
+  if (!links?.length) return;
+  const el = document.createElement("div");
+  el.className = "card";
+  el.innerHTML = `<h2 style="margin:0;font-size:16px">Manual pivots</h2>
+    <p class="muted" style="margin:4px 0 0;font-size:13.5px">These tools need a browser, login or captcha. Each link opens with the target filled in.</p>
+    <div class="links">${links.map(l => link(l.url, l.name)).join("")}</div>`;
+  $("#results").appendChild(el);
+}
+
+function finish(report, files) {
+  $("#status").textContent = report.elapsed_s ? `Done in ${report.elapsed_s}s` : `Saved ${report.generated}`;
+  $("#status").classList.add("on");
+  for (const [t, sec] of Object.entries(report.sections)) renderSection(t, sec);
+  renderLinks(report.links);
+  renderLeads(report.leads);
+  if (files) {
+    $("#actions").innerHTML = `<a class="btn ghost" href="${esc(files.html)}" target="_blank">HTML report</a> <a class="btn ghost" href="${esc(files.json)}" download>JSON</a>`;
+  }
+}
+
+// ---------- run ----------
+function run(target, type, pivot, deep = true) {
+  if (current) current.close();
+  history.replaceState(null, "", "?" + new URLSearchParams({ q: target, ...(type && { type }), ...(pivot && { pivot: "1" }), ...(!deep && { deep: "0" }) }));
+  const go = $("#go");
+  go.disabled = true; go.textContent = "Running…";
+  const qs = new URLSearchParams({ target, type, pivot: pivot ? "1" : "", deep: deep ? "1" : "0" });
+  const es = current = new EventSource(`/api/run?${qs}`);
+  const done = () => { es.close(); current = null; go.disabled = false; go.textContent = "Investigate"; };
+  const on = (ev, fn) => es.addEventListener(ev, e => fn(JSON.parse(e.data)));
+  on("start", d => resetResults(d.target, d.type));
+  on("section", d => sectionEl(d.title));
+  on("source", d => updateSource(d.section, d.name, d.result));
+  on("section_done", d => renderSection(d.title, d.section));
+  on("done", d => { finish(d.report, d.files); done(); loadHistory(); });
+  on("fail", d => { $("#status").textContent = "Failed"; $("#results").insertAdjacentHTML("beforeend", `<div class="card error-box">${esc(d.error)}</div>`); done(); });
+  es.onerror = () => { if (current === es) { $("#status") && ($("#status").textContent = "Connection lost"); done(); } };
+}
+
+$("#form").addEventListener("submit", e => {
+  e.preventDefault();
+  const t = $("#target").value.trim();
+  if (t) run(t, $("#type").value, $("#pivot").checked, $("#deep").checked);
+});
+$("#target").addEventListener("input", () => {
+  const k = detect($("#target").value), chip = $("#detected");
+  chip.hidden = !k || $("#type").value;
+  if (k) chip.textContent = TYPE_NAMES[k];
+});
+$("#type").addEventListener("change", () => $("#target").dispatchEvent(new Event("input")));
+document.querySelectorAll("[data-ex]").forEach(b => b.addEventListener("click", () => {
+  $("#target").value = b.dataset.ex; $("#target").dispatchEvent(new Event("input")); $("#form").requestSubmit();
+}));
+
+// ---------- history ----------
+async function loadHistory() {
+  try {
+    const items = await (await fetch("/api/history")).json();
+    if (!items.length) return;
+    $("#history").innerHTML = items.map(h => `<li><button type="button" data-f="${esc(h.file)}"><span class="t">${esc(h.target)}</span><span class="s">${esc(TYPE_NAMES[h.type] || h.type)} · ${esc(h.generated || "")}</span></button></li>`).join("");
+    $("#history").querySelectorAll("button").forEach(b => b.addEventListener("click", () => openReport(b.dataset.f)));
+  } catch { /* server unavailable */ }
+}
+
+async function openReport(file) {
+  if (current) { current.close(); current = null; }
+  const rep = await (await fetch(`/reports/${encodeURIComponent(file)}`)).json();
+  resetResults(rep.target, rep.type);
+  const base = file.replace(/\.json$/, "");
+  finish({ ...rep, elapsed_s: null }, { html: `/reports/${encodeURIComponent(base)}.html`, json: `/reports/${encodeURIComponent(file)}` });
+}
+
+loadHistory();
+
+// Deep links: /?q=example.com&type=domain&pivot=1 runs immediately.
+{
+  const p = new URLSearchParams(location.search);
+  if (p.get("q")) {
+    $("#target").value = p.get("q");
+    $("#type").value = p.get("type") || "";
+    $("#pivot").checked = p.get("pivot") === "1";
+    $("#deep").checked = p.get("deep") !== "0";
+    $("#target").dispatchEvent(new Event("input"));
+    run($("#target").value.trim(), $("#type").value, $("#pivot").checked, $("#deep").checked);
+  }
+}
+</script>
+</body>
+</html>

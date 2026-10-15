@@ -1,0 +1,2 @@
+# Optional — the tool runs on the Python standard library alone.
+phonenumbers>=8.13   # offline phone carrier/region/line-type lookup
