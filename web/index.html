@@ -27,6 +27,8 @@ header { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 12px; }
 header h1 { margin: 0; font-size: 22px; letter-spacing: -0.02em; }
 header h1 span { color: var(--accent); }
 header p { margin: 0; color: var(--muted); font-size: 14px; }
+header .signout { margin-left: auto; }
+@media (max-width: 640px) { header { flex-wrap: wrap; } header p { order: 3; flex-basis: 100%; } }
 
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
 .stack > * + * { margin-top: 16px; }
@@ -121,6 +123,7 @@ aside .s { display: block; font-size: 12px; color: var(--muted); }
   <header>
     <h1>osint<span>kit</span></h1>
     <p>Look up a username, email, domain, IP or phone number across public sources.</p>
+    <form method="post" action="/logout" class="signout"><button type="submit" class="btn ghost" title="Sign out">Sign out</button></form>
   </header>
 
   <main class="stack">
@@ -393,7 +396,12 @@ function run(target, type, pivot, deep = true) {
   on("section_done", d => renderSection(d.title, d.section));
   on("done", d => { finish(d.report, d.files); done(); loadHistory(); });
   on("fail", d => { $("#status").textContent = "Failed"; $("#results").insertAdjacentHTML("beforeend", `<div class="card error-box">${esc(d.error)}</div>`); done(); });
-  es.onerror = () => { if (current === es) { $("#status") && ($("#status").textContent = "Connection lost"); done(); } };
+  es.onerror = async () => {
+    if (current !== es) return;
+    done();
+    if ((await fetch("/api/me")).status === 401) return location.assign("/login");  // session expired
+    $("#status") && ($("#status").textContent = "Connection lost");
+  };
 }
 
 $("#form").addEventListener("submit", e => {
@@ -414,7 +422,9 @@ document.querySelectorAll("[data-ex]").forEach(b => b.addEventListener("click", 
 // ---------- history ----------
 async function loadHistory() {
   try {
-    const items = await (await fetch("/api/history")).json();
+    const r = await fetch("/api/history");
+    if (r.status === 401) return location.assign("/login");
+    const items = await r.json();
     if (!items.length) return;
     $("#history").innerHTML = items.map(h => `<li><button type="button" data-f="${esc(h.file)}"><span class="t">${esc(h.target)}</span><span class="s">${esc(TYPE_NAMES[h.type] || h.type)} · ${esc(h.generated || "")}</span></button></li>`).join("");
     $("#history").querySelectorAll("button").forEach(b => b.addEventListener("click", () => openReport(b.dataset.f)));

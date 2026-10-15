@@ -29,15 +29,37 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 ## Web UI
 
+The web UI needs a login, even when you open it locally. Set one up once:
+
 ```bash
-python3 web.py            # opens http://127.0.0.1:8000 in your browser
-.venv/bin/python web.py   # same, with phone lookups enabled
+python3 web.py --set-password   # choose a username and a 12+ character password
+python3 web.py                  # opens http://127.0.0.1:8000
 ```
 
+The password is stored only as a salted PBKDF2 hash in `.env`, which git ignores. Sessions last
+7 days, and an IP gets locked out for 15 minutes after 5 wrong passwords. Run `--set-password`
+again to change the login. Doing that also signs out every existing session.
+
 Type a target, press **Investigate**, and watch each source report back live. Finished runs are
-saved to `reports/` and listed under **Recent reports**. You can bookmark a search such as
-`http://127.0.0.1:8000/?q=example.com&pivot=1`. The server only listens on localhost.
-Use `--port` to change the port and `--no-browser` to stop it opening a tab.
+saved to `reports/` and listed under **Recent reports**.
+
+## Using it from anywhere (Cloudflare Tunnel)
+
+The server only listens on localhost. To reach it at `https://osint.emersonjohnston.org`, your Mac
+runs the app, and Cloudflare Tunnel makes an outbound connection to Cloudflare. No ports are
+opened on your network, and Cloudflare provides HTTPS.
+
+1. **Move the domain's DNS to Cloudflare** (free plan). Add `emersonjohnston.org` in the
+   Cloudflare dashboard. Check that the imported records match what GoDaddy has, especially MX
+   records if you get email at the domain. Then change the nameservers at GoDaddy to the two that
+   Cloudflare gives you, and wait for the zone to show **Active**.
+2. **Create the tunnel:** `scripts/setup-tunnel.sh`. It opens a browser to sign in to Cloudflare,
+   creates a tunnel called `osint`, and points `osint.emersonjohnston.org` at it.
+3. **Run it in the background:** `scripts/install-service.sh`. The app and the tunnel then start
+   when you log in and restart if they crash. Logs go to `~/Library/Logs/osintkit/`.
+
+It only works while your Mac is awake and online. To stop it, run
+`scripts/install-service.sh --uninstall`.
 
 ## What it checks
 
