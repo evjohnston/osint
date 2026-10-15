@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>osintkit</title>
+<meta name="description" content="An open-source, all-in-one OSINT lookup tool. One search across ~700 sites and dozens of public sources for usernames, emails, domains, IPs and phone numbers.">
+<meta property="og:title" content="osintkit">
+<meta property="og:description" content="One search across ~700 sites and dozens of public OSINT sources. Runs on your own machine.">
+<meta property="og:image" content="https://osint.emersonjohnston.org/screenshot.jpg">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='13' cy='13' r='8' fill='none' stroke='%232a5bd7' stroke-width='3.5'/><path d='M19 19l8 8' stroke='%232a5bd7' stroke-width='3.5' stroke-linecap='round'/></svg>">
+<style>
+:root {
+  --bg: #f6f6f3; --card: #ffffff; --ink: #1c1c1f; --muted: #6e6e76; --line: #e3e3de; --soft: #efefea;
+  --accent: #2a5bd7; --accent-ink: #ffffff; --code-bg: #1c1c1f; --code-ink: #ececef;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #121214; --card: #1b1b1e; --ink: #ececef; --muted: #8d8d96; --line: #2c2c31;
+    --soft: #232327; --accent: #7aa2ff; --accent-ink: #0d1530; --code-bg: #0b0b0d; }
+}
+:root[data-theme="dark"] { --bg: #121214; --card: #1b1b1e; --ink: #ececef; --muted: #8d8d96; --line: #2c2c31;
+  --soft: #232327; --accent: #7aa2ff; --accent-ink: #0d1530; --code-bg: #0b0b0d; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; }
+a { color: var(--accent); }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+
+nav { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+.logo { font-weight: 700; font-size: 20px; letter-spacing: -0.02em; color: var(--ink); text-decoration: none; }
+.logo span { color: var(--accent); }
+nav a.gh { color: var(--ink); text-decoration: none; font-size: 15px; display: inline-flex; gap: 8px; align-items: center; }
+nav a.gh svg { width: 20px; height: 20px; fill: currentColor; }
+
+.hero { padding: 48px 0 28px; max-width: 760px; }
+.hero h1 { font-size: clamp(32px, 6vw, 52px); line-height: 1.08; letter-spacing: -0.03em; margin: 0 0 18px; }
+.hero p { font-size: 19px; color: var(--muted); margin: 0 0 28px; }
+.cta { display: flex; gap: 12px; flex-wrap: wrap; }
+.btn { display: inline-flex; align-items: center; height: 46px; padding: 0 22px; border-radius: 10px; font-weight: 600;
+       text-decoration: none; border: 1px solid var(--line); color: var(--ink); background: var(--card); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+
+.shot { margin: 36px 0 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--line);
+        box-shadow: 0 20px 50px -20px rgba(0,0,0,.25); background: var(--card); }
+.shot img { display: block; width: 100%; height: auto; }
+
+section { padding: 64px 0 0; }
+h2 { font-size: 28px; letter-spacing: -0.02em; margin: 0 0 8px; }
+.lede { color: var(--muted); margin: 0 0 28px; max-width: 680px; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+.card h3 { margin: 0 0 4px; font-size: 17px; }
+.card .n { font-size: 13px; color: var(--accent); font-weight: 600; margin-bottom: 8px; }
+.card p { margin: 0; color: var(--muted); font-size: 15px; }
+
+pre { background: var(--code-bg); color: var(--code-ink); border-radius: 12px; padding: 20px; overflow-x: auto;
+      font: 14px/1.7 var(--mono); margin: 0; }
+pre .c { color: #8d8d96; }
+.steps { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.steps > div, .grid > * { min-width: 0; }
+@media (max-width: 760px) { .steps { grid-template-columns: 1fr; } }
+@media (max-width: 420px) { .grid { grid-template-columns: 1fr; } }
+.steps h3 { font-size: 15px; margin: 0 0 10px; }
+
+table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 15px; }
+th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 13px; color: var(--muted); font-weight: 600; background: var(--soft); }
+tr:last-child td { border-bottom: 0; }
+td code { font: 13px var(--mono); background: var(--soft); padding: 1px 6px; border-radius: 5px; }
+.table-wrap { overflow-x: auto; }
+
+.note { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 12px; padding: 20px 22px; }
+.note p { margin: 0; }
+.note p + p { margin-top: 10px; }
+
+footer { padding: 64px 0 40px; color: var(--muted); font-size: 14px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="logo" href="/">osint<span>kit</span></a>
+    <a class="gh" href="https://github.com/evjohnston/osint">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub
+    </a>
+  </nav>
+
+  <header class="hero">
+    <h1>One search across the whole OSINT framework.</h1>
+    <p>osintkit takes a username, email, domain, IP or phone number and checks it against about 700 sites and dozens of public intelligence sources at the same time. It then combines everything into one report and lists the leads worth following up.</p>
+    <div class="cta">
+      <a class="btn primary" href="#install">Install</a>
+      <a class="btn" href="https://github.com/evjohnston/osint">View the source</a>
+    </div>
+  </header>
+
+  <figure class="shot">
+    <img src="screenshot.jpg" width="1280" height="1250" alt="The osintkit web interface showing a username search: a Leads panel with names, locations and linked profiles, and cards for each site where the account was found.">
+  </figure>
+
+  <section>
+    <h2>What it looks up</h2>
+    <p class="lede">The tool works out what kind of target you typed and runs every relevant source for it. Results stream in live as each source answers.</p>
+    <div class="grid">
+      <div class="card"><div class="n">~700 sites</div><h3>Usernames</h3>
+        <p>The full WhatsMyName dataset plus direct API checks for GitHub, GitLab, Keybase, Mastodon, Bluesky and more. A deep GitHub profile pulls commit emails, real names, organizations and keys. Each hit is checked against a random control name to weed out false positives.</p></div>
+      <div class="card"><div class="n">8 sources</div><h3>Emails</h3>
+        <p>Mail provider, SPF and DMARC records, and a disposable-address check. Data breaches with what each one exposed, a Gravatar profile with its verified accounts, and GitHub commits made with the address.</p></div>
+      <div class="card"><div class="n">15 sources</div><h3>Domains</h3>
+        <p>WHOIS, DNS and the security certificate. Subdomains from certificate logs, with a check of which are live. Archive history, past urlscan.io scans, the site's tech stack, and social links and analytics IDs on the homepage.</p></div>
+      <div class="card"><div class="n">13 sources</div><h3>IP addresses</h3>
+        <p>Location and ISP, owner, open ports and known vulnerabilities, threat reports, the abuse contact, Tor exit status, and the other domains hosted on the same IP.</p></div>
+      <div class="card"><div class="n">offline + API</div><h3>Phone numbers</h3>
+        <p>Whether the number is valid, plus its region, original carrier, line type and time zones from Google's libphonenumber. Numverify adds more if you have a key.</p></div>
+      <div class="card"><div class="n">every report</div><h3>Leads and pivots</h3>
+        <p>Every email, username, name, location and profile found by any source is collected in one place, with a count of how many sources agree. Click a lead to investigate it next. Each report also has ready-made links to the tools that need a browser.</p></div>
+    </div>
+  </section>
+
+  <section id="install">
+    <h2>Install and run</h2>
+    <p class="lede">You need Python 3.9 or newer. Everything else is optional. osintkit runs on your own computer, so your searches go straight to the sources and never pass through anyone else's server.</p>
+    <div class="steps">
+      <div>
+        <h3>Web interface</h3>
+<pre><span class="c"># get the code</span>
+git clone https://github.com/evjohnston/osint.git
+cd osint
+
+<span class="c"># opens http://127.0.0.1:8000</span>
+python3 web.py</pre>
+      </div>
+      <div>
+        <h3>Command line</h3>
+<pre>python3 osint.py torvalds
+python3 osint.py someone@example.com -p
+python3 osint.py example.com -p
+python3 osint.py 8.8.8.8
+python3 osint.py torvalds --quick  <span class="c"># 30 sites, fast</span></pre>
+      </div>
+    </div>
+    <p class="lede" style="margin-top:18px">For phone lookups, first run <code style="font-family:var(--mono)">pip install phonenumbers</code>. Every search is saved as an HTML report and a JSON file in <code style="font-family:var(--mono)">reports/</code>.</p>
+  </section>
+
+  <section>
+    <h2>Optional API keys</h2>
+    <p class="lede">Every source in the list above works without an account. Copy <code style="font-family:var(--mono)">.env.example</code> to <code style="font-family:var(--mono)">.env</code> and add any of these keys to unlock more data.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Key</th><th>Cost</th><th>What it adds</th></tr></thead>
+        <tbody>
+          <tr><td><code>GITHUB_TOKEN</code></td><td>Free</td><td>Raises GitHub's limit from 60 to 5,000 lookups an hour, which keeps the deep GitHub profile working</td></tr>
+          <tr><td><code>OTX_API_KEY</code></td><td>Free</td><td>A domain's DNS history, which can reveal old servers and hidden subdomains</td></tr>
+          <tr><td><code>HUNTER_API_KEY</code></td><td>Free tier</td><td>Staff email addresses for a domain, and a check that an inbox exists</td></tr>
+          <tr><td><code>SHODAN_API_KEY</code></td><td>Free tier</td><td>Full details of the services running on an IP</td></tr>
+          <tr><td><code>VT_API_KEY</code></td><td>Free</td><td>Whether VirusTotal flags a domain or IP as malicious</td></tr>
+          <tr><td><code>ABUSEIPDB_API_KEY</code></td><td>Free</td><td>Abuse reports filed against an IP</td></tr>
+          <tr><td><code>HIBP_API_KEY</code></td><td>Paid</td><td>Breach results from Have I Been Pwned</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Use it responsibly</h2>
+    <div class="note">
+      <p>Only investigate people and organizations you're authorized to look into. That includes yourself, your own organization, a scoped penetration test or red-team engagement, a CTF, or legitimate research and journalism. Breach records and identity details are personal data, and privacy laws such as GDPR and CCPA may apply to how you collect and keep them.</p>
+      <p>Results come from public sources and can be stale, wrong or about a different person with the same name. Verify a lead before you act on it.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>Built by Emerson Johnston. Inspired by <a href="https://osintframework.com/">osintframework.com</a> and <a href="https://github.com/WebBreacher/WhatsMyName">WhatsMyName</a>.</span>
+    <a href="https://github.com/evjohnston/osint">github.com/evjohnston/osint</a>
+  </footer>
+</div>
+</body>
+</html>
